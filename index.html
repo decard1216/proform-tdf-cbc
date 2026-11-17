@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TDF CBC Wireless Console</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            surface: '#0f172a',
+            card: '#1e293b',
+            cardAlt: '#263349',
+            accent: '#38bdf8',
+            emeraldRide: '#10b981',
+            amberRide: '#f59e0b',
+            roseRide: '#f43f5e'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #0b1120;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 9999px;
+      background: #334155;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 9999px;
+      background: #38bdf8;
+      margin-top: -8px;
+      border: 2px solid #0f172a;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 py-3">
+    <div class="max-w-3xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="5.5" cy="17.5" r="3.5" />
+            <circle cx="18.5" cy="17.5" r="3.5" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 6a1 1 0 100-2 1 1 0 000 2zm-3 11.5V14l-3-3 4-3 2 3h3" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight truncate">ProForm TDF CBC</h1>
+          <div class="flex items-center gap-1.5 text-xs text-slate-400">
+            <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+            <span id="statusText" class="truncate">Disconnected</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="iosGuideBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition">
+          iOS Setup
+        </button>
+        <button id="demoToggleBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium border border-slate-700 transition">
+          Demo
+        </button>
+        <button id="connectBtn" type="button" class="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs sm:text-sm font-semibold transition shadow-sm">
+          Connect BLE
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Banner -->
+  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none space-y-2"></div>
+
+  <!-- Main Content -->
+  <main class="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+    <!-- Navigation Tabs -->
+    <nav class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800">
+      <button type="button" data-tab="ride" class="tab-btn py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-800 text-white shadow-sm transition">
+        Ride Console
+      </button>
+      <button type="button" data-tab="workouts" class="tab-btn py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition">
+        Workouts
+      </button>
+      <button type="button" data-tab="ble" class="tab-btn py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition">
+        BLE Lab
+      </button>
+    </nav>
+
+    <!-- TAB 1: RIDE CONSOLE -->
+    <section id="tab-ride" class="space-y-4">
+      <!-- Primary Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Power</div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="metricWatts" class="text-3xl font-extrabold text-sky-400 tabular-nums">0</span>
+            <span class="text-xs text-slate-400">W</span>
+          </div>
+          <div id="metricAvgWatts" class="mt-1 text-xs text-slate-400">Avg: 0 W</div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Cadence</div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="metricCadence" class="text-3xl font-extrabold text-emerald-400 tabular-nums">0</span>
+            <span class="text-xs text-slate-400">RPM</span>
+          </div>
+          <div id="metricAvgCadence" class="mt-1 text-xs text-slate-400">Avg: 0 RPM</div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Speed</div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="metricSpeed" class="text-3xl font-extrabold text-slate-100 tabular-nums">0.0</span>
+            <span class="text-xs text-slate-400">mph</span>
+          </div>
+          <div id="metricDistance" class="mt-1 text-xs text-slate-400">0.00 mi</div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Elapsed</div>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="metricTime" class="text-3xl font-extrabold text-amber-300 tabular-nums">00:00</span>
+          </div>
+          <div id="metricCalories" class="mt-1 text-xs text-slate-400">0 kcal</div>
+        </div>
+      </div>
+
+      <!-- Resistance Control Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100">SMR Resistance Control</h2>
+            <p class="text-xs text-slate-400">16 digital magnetic levels</p>
+          </div>
+          <div class="flex items-baseline gap-1.5 bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 uppercase font-semibold">Lvl</span>
+            <span id="resDisplay" class="text-2xl font-extrabold text-sky-400 tabular-nums">1</span>
+            <span class="text-xs text-slate-500">/ 16</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="resDownBtn" type="button" class="w-14 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xl font-bold border border-slate-700 transition flex items-center justify-center shrink-0">
+            −
+          </button>
+          <div class="flex-1 px-1">
+            <input id="resSlider" type="range" min="1" max="16" value="1" class="w-full cursor-pointer" />
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1 px-1">
+              <span>1 (Easy)</span>
+              <span>8 (Tempo)</span>
+              <span>16 (Climb)</span>
+            </div>
+          </div>
+          <button id="resUpBtn" type="button" class="w-14 h-12 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 text-xl font-bold transition flex items-center justify-center shrink-0">
+            +
+          </button>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" data-res="3" class="res-preset py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700/70 transition">
+            Flat (3)
+          </button>
+          <button type="button" data-res="6" class="res-preset py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700/70 transition">
+            Tempo (6)
+          </button>
+          <button type="button" data-res="10" class="res-preset py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700/70 transition">
+            Hill (10)
+          </button>
+          <button type="button" data-res="14" class="res-preset py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700/70 transition">
+            Max (14)
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Workout Banner (visible when workout running) -->
+      <div id="activeWorkoutBanner" class="hidden bg-sky-950/50 border border-sky-500/40 rounded-2xl p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-sky-300" id="activeWorkoutName">Interval Workout</div>
+            <div class="text-sm font-bold text-white" id="activeSegmentLabel">Warmup • Target Resistance 4</div>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-extrabold text-sky-400 tabular-nums" id="activeSegmentTimer">00:00</div>
+            <div class="text-[11px] text-slate-400" id="activeSegmentProgress">Step 1 of 4</div>
+          </div>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div id="activeWorkoutBar" class="h-full bg-sky-400 transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-end">
+          <button id="stopWorkoutBtn" type="button" class="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/30 transition">
+            Stop Interval
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Chart -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-100">Live Power, Cadence &amp; Resistance</h2>
+          <span class="text-xs text-slate-400">Last 60s</span>
+        </div>
+        <div class="relative h-56 w-full">
+          <canvas id="rideChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Ride Session Controls -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button id="rideStartPauseBtn" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold transition">
+            Start Ride
+          </button>
+          <button id="rideResetBtn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700 transition">
+            Reset
+          </button>
+        </div>
+        <button id="exportCsvBtn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-sm font-semibold border border-slate-700 transition">
+          Export CSV
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 2: WORKOUTS -->
+    <section id="tab-workouts" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-100">Structured Auto-Resistance Workouts</h2>
+          <p class="text-xs text-slate-400">Automatically sends resistance changes to your bike at each interval.</p>
+        </div>
+        <div id="workoutList" class="space-y-2.5"></div>
+      </div>
+
+      <!-- Custom Interval Builder -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-sm font-bold text-slate-100">Quick Custom HIIT Builder</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Rounds</label>
+            <input id="hiitRounds" type="number" min="1" max="20" value="6" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Work (sec)</label>
+            <input id="hiitWorkSec" type="number" min="10" max="300" value="30" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Work Lvl (1-16)</label>
+            <input id="hiitWorkRes" type="number" min="1" max="16" value="12" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Rest Lvl (1-16)</label>
+            <input id="hiitRestRes" type="number" min="1" max="16" value="4" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
+        </div>
+        <button id="startCustomHiitBtn" type="button" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold transition">
+          Launch Custom HIIT
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 3: BLE LAB -->
+    <section id="tab-ble" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100">iFIT / ProForm GATT Inspector</h2>
+            <p class="text-xs text-slate-400">Service <code class="text-sky-300">00001533-1412-efde-1523-785feabcd123</code></p>
+          </div>
+          <button id="clearLogBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700">
+            Clear Log
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+            <span class="text-slate-400">Device:</span>
+            <span id="bleDeviceName" class="text-slate-200 font-mono ml-1">—</span>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+            <span class="text-slate-400">Characteristics:</span>
+            <span id="bleCharStatus" class="text-slate-200 font-mono ml-1">Not discovered</span>
+          </div>
+        </div>
+
+        <!-- Custom Hex / Init Sequence Tester -->
+        <div class="space-y-2 pt-1">
+          <label class="block text-xs font-semibold text-slate-300">Send Raw Hex Packet (or 0x90 Init Key)</label>
+          <div class="flex gap-2">
+            <input id="rawHexInput" type="text" placeholder="e.g. fe 02 0d 02" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-sky-300 placeholder-slate-600" />
+            <button id="sendRawHexBtn" type="button" class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition shrink-0">
+              Send
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            If your bike replies <code class="text-rose-300">02 08</code> (rejected) on resistance writes, it expects your unit's <code class="text-sky-300">0x90</code> init packets.
+          </p>
+        </div>
+
+        <!-- Packet Log -->
+        <div id="bleLog" class="h-64 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] space-y-1 text-slate-300">
+          <div class="text-slate-500">Waiting for BLE connection or Demo mode...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- iOS / iPadOS Setup Modal -->
+  <div id="iosModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Running on iPhone &amp; iPad</h3>
+        <button id="closeIosModalBtn" type="button" class="text-slate-400 hover:text-white text-lg font-bold px-2">✕</button>
+      </div>
+      <div class="space-y-2.5 text-xs text-slate-300 leading-relaxed">
+        <p>Apple's Safari blocks Web Bluetooth (<code class="text-sky-300">navigator.bluetooth</code>) on iOS and iPadOS. To connect wirelessly to your ProForm TDF CBC:</p>
+        <ol class="list-decimal list-inside space-y-1.5 text-slate-200">
+          <li>Install the free <strong>Bluefy – Web BLE Browser</strong> app from the iOS App Store.</li>
+          <li>Save this HTML file to iCloud Drive, GitHub Pages, or serve it from your PC on your local network.</li>
+          <li>Wake up your TDF CBC by pedaling a few strokes, then open this page in <strong>Bluefy</strong> and tap <strong>Connect BLE</strong>.</li>
+        </ol>
+        <p class="text-slate-400 pt-1">Later, if you want a dedicated Home Screen app without Bluefy, you can wrap this exact HTML/JS in <strong>Capacitor</strong> with <code class="text-sky-300">@capacitor-community/bluetooth-le</code>.</p>
+      </div>
+      <button id="ackIosModalBtn" type="button" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold transition">
+        Got it
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- ProForm TDF CBC BLE Constants ---
+    const IFIT_SERVICE_UUID = '00001533-1412-efde-1523-785feabcd123';
+    const IFIT_WRITE_CHAR_UUID = '00001534-1412-efde-1523-785feabcd123';
+    const IFIT_NOTIFY_CHAR_UUID = '00001535-1412-efde-1523-785feabcd123';
+
+    // Resistance byte lookup table from qdomyos-zwift proformbike.cpp (levels 1-16)
+    const RESISTANCE_BYTE_MAP = {
+      0x02: 1, 0x04: 2, 0x07: 3, 0x09: 4,
+      0x0b: 5, 0x0e: 6, 0x10: 7, 0x13: 8,
+      0x15: 9, 0x18: 10, 0x1a: 11, 0x1d: 12,
+      0x1f: 13, 0x21: 14, 0x24: 15, 0x26: 16
+    };
+    const LEVEL_TO_BYTE = [0x02, 0x04, 0x07, 0x09, 0x0b, 0x0e, 0x10, 0x13, 0x15, 0x18, 0x1a, 0x1d, 0x1f, 0x21, 0x24, 0x26];
+
+    const PRESET_WORKOUTS = [
+      {
+        id: 'hiit_20',
+        name: '20-Min HIIT Pyramid',
+        description: 'Warmup + alternating hard surges (Lvl 11–13) and recovery spins.',
+        segments: [
+          { label: 'Warmup', durationSec: 180, resistance: 4 },
+          { label: 'Surge 1', durationSec: 60, resistance: 11 },
+          { label: 'Recover 1', durationSec: 60, resistance: 5 },
+          { label: 'Surge 2', durationSec: 60, resistance: 12 },
+          { label: 'Recover 2', durationSec: 60, resistance: 5 },
+          { label: 'Peak Surge', durationSec: 60, resistance: 14 },
+          { label: 'Cooldown', durationSec: 180, resistance: 3 }
+        ]
+      },
+      {
+        id: 'climb_15',
+        name: '15-Min Endurance Climb',
+        description: 'Progressive resistance ramp from Level 5 up to Level 15.',
+        segments: [
+          { label: 'Base Spin', durationSec: 180, resistance: 5 },
+          { label: 'Climb Stage 1', durationSec: 180, resistance: 8 },
+          { label: 'Climb Stage 2', durationSec: 180, resistance: 11 },
+          { label: 'Summit Push', durationSec: 180, resistance: 14 },
+          { label: 'Descent', durationSec: 180, resistance: 4 }
+        ]
+      },
+      {
+        id: 'tabata_12',
+        name: 'Tabata Sprint (4 Min Block)',
+        description: '8 rounds of 20s all-out at Level 12 / 10s easy at Level 3.',
+        segments: Array.from({ length: 8 }, (_, i) => ([
+          { label: `Sprint ${i + 1}`, durationSec: 20, resistance: 12 },
+          { label: `Rest ${i + 1}`, durationSec: 10, resistance: 3 }
+        ])).flat()
+      }
+    ];
+
+    // --- App State ---
+    const state = {
+      connected: false,
+      demoMode: false,
+      rideRunning: false,
+      elapsedSec: 0,
+      watts: 0,
+      cadence: 0,
+      speedMph: 0,
+      distanceMi: 0,
+      calories: 0,
+      resistance: 1,
+      wattsSum: 0,
+      cadenceSum: 0,
+      samplesCount: 0,
+      samples: [], // { t, watts, cadence, speedMph, resistance }
+      device: null,
+      writeChar: null,
+      notifyChar: null,
+      activeWorkout: null,
+      workoutSegmentIdx: 0,
+      workoutSegmentRemaining: 0
+    };
+
+    // --- DOM Elements ---
+    const el = {
+      statusDot: document.getElementById('statusDot'),
+      statusText: document.getElementById('statusText'),
+      connectBtn: document.getElementById('connectBtn'),
+      demoToggleBtn: document.getElementById('demoToggleBtn'),
+      iosGuideBtn: document.getElementById('iosGuideBtn'),
+      iosModal: document.getElementById('iosModal'),
+      closeIosModalBtn: document.getElementById('closeIosModalBtn'),
+      ackIosModalBtn: document.getElementById('ackIosModalBtn'),
+      metricWatts: document.getElementById('metricWatts'),
+      metricAvgWatts: document.getElementById('metricAvgWatts'),
+      metricCadence: document.getElementById('metricCadence'),
+      metricAvgCadence: document.getElementById('metricAvgCadence'),
+      metricSpeed: document.getElementById('metricSpeed'),
+      metricDistance: document.getElementById('metricDistance'),
+      metricTime: document.getElementById('metricTime'),
+      metricCalories: document.getElementById('metricCalories'),
+      resDisplay: document.getElementById('resDisplay'),
+      resSlider: document.getElementById('resSlider'),
+      resDownBtn: document.getElementById('resDownBtn'),
+      resUpBtn: document.getElementById('resUpBtn'),
+      rideStartPauseBtn: document.getElementById('rideStartPauseBtn'),
+      rideResetBtn: document.getElementById('rideResetBtn'),
+      exportCsvBtn: document.getElementById('exportCsvBtn'),
+      activeWorkoutBanner: document.getElementById('activeWorkoutBanner'),
+      activeWorkoutName: document.getElementById('activeWorkoutName'),
+      activeSegmentLabel: document.getElementById('activeSegmentLabel'),
+      activeSegmentTimer: document.getElementById('activeSegmentTimer'),
+      activeSegmentProgress: document.getElementById('activeSegmentProgress'),
+      activeWorkoutBar: document.getElementById('activeWorkoutBar'),
+      stopWorkoutBtn: document.getElementById('stopWorkoutBtn'),
+      workoutList: document.getElementById('workoutList'),
+      hiitRounds: document.getElementById('hiitRounds'),
+      hiitWorkSec: document.getElementById('hiitWorkSec'),
+      hiitWorkRes: document.getElementById('hiitWorkRes'),
+      hiitRestRes: document.getElementById('hiitRestRes'),
+      startCustomHiitBtn: document.getElementById('startCustomHiitBtn'),
+      bleDeviceName: document.getElementById('bleDeviceName'),
+      bleCharStatus: document.getElementById('bleCharStatus'),
+      rawHexInput: document.getElementById('rawHexInput'),
+      sendRawHexBtn: document.getElementById('sendRawHexBtn'),
+      bleLog: document.getElementById('bleLog'),
+      clearLogBtn: document.getElementById('clearLogBtn'),
+      toastContainer: document.getElementById('toastContainer')
+    };
+
+    // --- Chart.js Setup ---
+    const chartCtx = document.getElementById('rideChart').getContext('2d');
+    const rideChart = new Chart(chartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Watts',
+            data: [],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Cadence (RPM)',
+            data: [],
+            borderColor: '#10b981',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'Resistance (1-16)',
+            data: [],
+            borderColor: '#f59e0b',
+            borderWidth: 2,
+            stepped: true,
+            fill: false,
+            pointRadius: 0,
+            yAxisID: 'y2'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#64748b', maxTicksLimit: 6, font: { size: 10 } },
+            grid: { color: 'rgba(148, 163, 184, 0.08)' }
+          },
+          y: {
+            type: 'linear',
+            position: 'left',
+            min: 0,
+            suggestedMax: 300,
+            ticks: { color: '#38bdf8', font: { size: 10 } },
+            grid: { color: 'rgba(148, 163, 184, 0.08)' }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            suggestedMax: 120,
+            ticks: { color: '#10b981', font: { size: 10 } },
+            grid: { drawOnChartArea: false }
+          },
+          y2: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            max: 16,
+            ticks: { color: '#f59e0b', stepSize: 4, font: { size: 10 } },
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+
+    // --- Helpers ---
+    function showToast(msg, type = 'info') {
+      const colors = {
+        info: 'bg-slate-800 border-sky-500/40 text-sky-200',
+        success: 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200',
+        warn: 'bg-amber-950/90 border-amber-500/40 text-amber-200',
+        error: 'bg-rose-950/90 border-rose-500/40 text-rose-200'
+      };
+      const div = document.createElement('div');
+      div.className = `px-4 py-2.5 rounded-xl border text-xs font-medium shadow-lg text-center transition-opacity ${colors[type] || colors.info}`;
+      div.textContent = msg;
+      el.toastContainer.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 300);
+      }, 3200);
+    }
+
+    function logBle(dir, msg) {
+      const ts = new Date().toLocaleTimeString([], { hour12: false });
+      const row = document.createElement('div');
+      const color = dir === 'TX' ? 'text-sky-400' : dir === 'RX' ? 'text-emerald-400' : dir === 'ERR' ? 'text-rose-400' : 'text-slate-400';
+      row.innerHTML = `<span class="text-slate-600">[${ts}]</span> <span class="${color} font-bold">${dir}</span> <span>${msg}</span>`;
+      el.bleLog.appendChild(row);
+      el.bleLog.scrollTop = el.bleLog.scrollHeight;
+    }
+
+    function bytesToHex(bytes) {
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    }
+
+    function hexToBytes(hexStr) {
+      const clean = hexStr.replace(/[^0-9a-fA-F]/g, '');
+      if (clean.length % 2 !== 0 || clean.length === 0) return null;
+      const out = new Uint8Array(clean.length / 2);
+      for (let i = 0; i < out.length; i++) {
+        out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+      }
+      return out;
+    }
+
+    function formatTime(totalSec) {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // --- UI Rendering ---
+    function renderMetrics() {
+      el.metricWatts.textContent = Math.round(state.watts);
+      el.metricCadence.textContent = Math.round(state.cadence);
+      el.metricSpeed.textContent = state.speedMph.toFixed(1);
+      el.metricDistance.textContent = `${state.distanceMi.toFixed(2)} mi`;
+      el.metricTime.textContent = formatTime(state.elapsedSec);
+      el.metricCalories.textContent = `${Math.round(state.calories)} kcal`;
+
+      const avgW = state.samplesCount > 0 ? Math.round(state.wattsSum / state.samplesCount) : 0;
+      const avgC = state.samplesCount > 0 ? Math.round(state.cadenceSum / state.samplesCount) : 0;
+      el.metricAvgWatts.textContent = `Avg: ${avgW} W`;
+      el.metricAvgCadence.textContent = `Avg: ${avgC} RPM`;
+
+      el.resDisplay.textContent = state.resistance;
+      el.resSlider.value = state.resistance;
+    }
+
+    function renderConnectionState() {
+      if (state.connected) {
+        el.statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 inline-block';
+        el.statusText.textContent = state.device ? state.device.name || 'ProForm Bike' : 'BLE Connected';
+        el.connectBtn.textContent = 'Disconnect';
+        el.connectBtn.className = 'px-3.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs sm:text-sm font-semibold border border-rose-500/30 transition';
+      } else if (state.demoMode) {
+        el.statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 inline-block';
+        el.statusText.textContent = 'Demo Simulator';
+        el.connectBtn.textContent = 'Connect BLE';
+        el.connectBtn.className = 'px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs sm:text-sm font-semibold transition shadow-sm';
+      } else {
+        el.statusDot.className = 'w-2 h-2 rounded-full bg-slate-500 inline-block';
+        el.statusText.textContent = 'Disconnected';
+        el.connectBtn.textContent = 'Connect BLE';
+        el.connectBtn.className = 'px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs sm:text-sm font-semibold transition shadow-sm';
+      }
+    }
+
+    function updateChart() {
+      const recent = state.samples.slice(-60);
+      rideChart.data.labels = recent.map(s => formatTime(s.t));
+      rideChart.data.datasets[0].data = recent.map(s => Math.round(s.watts));
+      rideChart.data.datasets[1].data = recent.map(s => Math.round(s.cadence));
+      rideChart.data.datasets[2].data = recent.map(s => s.resistance);
+      rideChart.update('none');
+    }
+
+    // --- BLE Connection & Protocol ---
+    async function connectBle() {
+      if (!navigator.bluetooth) {
+        showToast('Web Bluetooth not available here. Open in Bluefy on iOS or Chrome on desktop.', 'warn');
+        logBle('ERR', 'navigator.bluetooth is undefined in this browser.');
+        return;
+      }
+      try {
+        logBle('SYS', 'Scanning for iFIT / ProForm BLE device...');
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [IFIT_SERVICE_UUID]
+        });
+        state.device = device;
+        el.bleDeviceName.textContent = device.name || device.id;
+        device.addEventListener('gattserverdisconnected', onBleDisconnected);
+
+        logBle('SYS', `Connecting to ${device.name || 'device'}...`);
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(IFIT_SERVICE_UUID);
+        const chars = await service.getCharacteristics();
+
+        let writeChar = null;
+        let notifyChar = null;
+        for (const c of chars) {
+          if (c.uuid === IFIT_WRITE_CHAR_UUID || c.properties.write || c.properties.writeWithoutResponse) {
+            writeChar = c;
+          }
+          if (c.uuid === IFIT_NOTIFY_CHAR_UUID || c.properties.notify || c.properties.indicate) {
+            notifyChar = c;
+          }
+        }
+
+        state.writeChar = writeChar;
+        state.notifyChar = notifyChar;
+        el.bleCharStatus.textContent = `W:${writeChar ? 'OK' : 'NO'} / N:${notifyChar ? 'OK' : 'NO'}`;
+
+        if (notifyChar) {
+          await notifyChar.startNotifications();
+          notifyChar.addEventListener('characteristicvaluechanged', handleBleNotification);
+          logBle('SYS', 'Subscribed to telemetry notifications.');
+        }
+
+        state.connected = true;
+        state.demoMode = false;
+        renderConnectionState();
+        showToast(`Connected to ${device.name || 'ProForm TDF CBC'}`, 'success');
+      } catch (err) {
+        logBle('ERR', err.message || String(err));
+        showToast('BLE connection cancelled or failed.', 'error');
+      }
+    }
+
+    function disconnectBle() {
+      if (state.device && state.device.gatt && state.device.gatt.connected) {
+        state.device.gatt.disconnect();
+      }
+      onBleDisconnected();
+    }
+
+    function onBleDisconnected() {
+      state.connected = false;
+      state.writeChar = null;
+      state.notifyChar = null;
+      el.bleCharStatus.textContent = 'Disconnected';
+      renderConnectionState();
+      logBle('SYS', 'BLE disconnected.');
+    }
+
+    function handleBleNotification(event) {
+      const data = new Uint8Array(event.target.value.buffer);
+      logBle('RX', bytesToHex(data));
+
+      // Decode ProForm TDF CBC resistance byte if frame length matches
+      if (data.length > 11 && RESISTANCE_BYTE_MAP[data[11]] !== undefined) {
+        state.resistance = RESISTANCE_BYTE_MAP[data[11]];
+      }
+      // Decode cadence / watts if present in standard iFIT status frame
+      if (data.length >= 16 && data[0] === 0x00) {
+        const rawWatts = data[7] | (data[8] << 8);
+        if (rawWatts <= 2500) state.watts = rawWatts;
+        state.cadence = data[14] || state.cadence;
+        state.speedMph = Number(((state.cadence * 0.22) + (state.resistance * 0.35)).toFixed(1));
+      }
+      renderMetrics();
+    }
+
+    async function sendResistanceCommand(level) {
+      const clamped = Math.max(1, Math.min(16, Math.round(level)));
+      state.resistance = clamped;
+      renderMetrics();
+
+      if (state.connected && state.writeChar) {
+        // Construct ProForm iFIT resistance frame with checksum
+        const resByte = LEVEL_TO_BYTE[clamped - 1];
+        const header = new Uint8Array([0xfe, 0x02, 0x0d, 0x02]);
+        const payload = new Uint8Array([0xff, 0x0d, 0x02, 0x04, 0x02, 0x09, 0x04, 0x09, 0x02, 0x01, 0x04, resByte, 0x00, 0x00, 0x00]);
+        let sum = 0;
+        for (let i = 4; i < payload.length - 1; i++) sum += payload[i];
+        payload[payload.length - 1] = sum & 0xff;
+
+        try {
+          await state.writeChar.writeValue(header);
+          await state.writeChar.writeValue(payload);
+          logBle('TX', `Set Resistance ${clamped} -> ${bytesToHex(payload)}`);
+        } catch (err) {
+          logBle('ERR', `Write failed: ${err.message}`);
+          showToast('Failed to send resistance command.', 'error');
+        }
+      } else if (state.demoMode) {
+        logBle('TX', `[DEMO] Set Resistance -> Level ${clamped}`);
+      }
+    }
+
+    // --- Ride & Demo Simulation Loop ---
+    let loopTimer = null;
+
+    function startLoop() {
+      if (loopTimer) clearInterval(loopTimer);
+      loopTimer = setInterval(() => {
+        if (state.demoMode && state.rideRunning) {
+          // Realistic cycling physics approximation for Demo mode
+          const targetCadence = 72 + Math.sin(state.elapsedSec / 8) * 8 + (Math.random() * 4 - 2);
+          state.cadence = Math.max(45, Math.min(115, targetCadence));
+          state.watts = Math.round((state.cadence * 1.15) * (0.55 + state.resistance * 0.14));
+          state.speedMph = Number((state.cadence * 0.18 + state.resistance * 0.45).toFixed(1));
+        }
+
+        if (state.rideRunning) {
+          state.elapsedSec += 1;
+          state.distanceMi += state.speedMph / 3600;
+          state.calories += (state.watts * 0.00095);
+          state.wattsSum += state.watts;
+          state.cadenceSum += state.cadence;
+          state.samplesCount += 1;
+          state.samples.push({
+            t: state.elapsedSec,
+            watts: state.watts,
+            cadence: state.cadence,
+            speedMph: state.speedMph,
+            resistance: state.resistance
+          });
+          tickWorkout();
+          renderMetrics();
+          updateChart();
+        }
+      }, 1000);
+    }
+
+    // --- Workouts ---
+    function renderWorkoutList() {
+      el.workoutList.innerHTML = '';
+      PRESET_WORKOUTS.forEach(w => {
+        const totalSec = w.segments.reduce((acc, s) => acc + s.durationSec, 0);
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between gap-3';
+        card.innerHTML = `
+          <div>
+            <div class="text-sm font-bold text-slate-100">${w.name}</div>
+            <div class="text-xs text-slate-400 mt-0.5">${w.description} • ${formatTime(totalSec)}</div>
+          </div>
+          <button type="button" class="start-preset-btn px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold shrink-0 transition" data-id="${w.id}">
+            Start
+          </button>
+        `;
+        el.workoutList.appendChild(card);
+      });
+
+      document.querySelectorAll('.start-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const w = PRESET_WORKOUTS.find(x => x.id === btn.dataset.id);
+          if (w) launchWorkout(w);
+        });
+      });
+    }
+
+    function launchWorkout(workout) {
+      if (!state.connected && !state.demoMode) {
+        state.demoMode = true;
+        renderConnectionState();
+        showToast('Enabled Demo mode for workout preview.', 'info');
+      }
+      state.activeWorkout = workout;
+      state.workoutSegmentIdx = 0;
+      state.workoutSegmentRemaining = workout.segments[0].durationSec;
+      state.rideRunning = true;
+      el.rideStartPauseBtn.textContent = 'Pause Ride';
+      el.rideStartPauseBtn.className = 'px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold transition';
+      sendResistanceCommand(workout.segments[0].resistance);
+      updateWorkoutBanner();
+      switchTab('ride');
+    }
+
+    function tickWorkout() {
+      if (!state.activeWorkout) return;
+      state.workoutSegmentRemaining -= 1;
+      if (state.workoutSegmentRemaining <= 0) {
+        state.workoutSegmentIdx += 1;
+        if (state.workoutSegmentIdx >= state.activeWorkout.segments.length) {
+          showToast(`Completed ${state.activeWorkout.name}!`, 'success');
+          stopWorkout();
+          return;
+        }
+        const nextSeg = state.activeWorkout.segments[state.workoutSegmentIdx];
+        state.workoutSegmentRemaining = nextSeg.durationSec;
+        sendResistanceCommand(nextSeg.resistance);
+        showToast(`Next: ${nextSeg.label} (Lvl ${nextSeg.resistance})`, 'info');
+      }
+      updateWorkoutBanner();
+    }
+
+    function updateWorkoutBanner() {
+      if (!state.activeWorkout) {
+        el.activeWorkoutBanner.classList.add('hidden');
+        return;
+      }
+      el.activeWorkoutBanner.classList.remove('hidden');
+      const seg = state.activeWorkout.segments[state.workoutSegmentIdx];
+      el.activeWorkoutName.textContent = state.activeWorkout.name;
+      el.activeSegmentLabel.textContent = `${seg.label} • Target Resistance ${seg.resistance}`;
+      el.activeSegmentTimer.textContent = formatTime(state.workoutSegmentRemaining);
+      el.activeSegmentProgress.textContent = `Step ${state.workoutSegmentIdx + 1} of ${state.activeWorkout.segments.length}`;
+      const pct = Math.round(((seg.durationSec - state.workoutSegmentRemaining) / seg.durationSec) * 100);
+      el.activeWorkoutBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    }
+
+    function stopWorkout() {
+      state.activeWorkout = null;
+      updateWorkoutBanner();
+    }
+
+    // --- Tabs ---
+    function switchTab(tabName) {
+      ['ride', 'workouts', 'ble'].forEach(t => {
+        const panel = document.getElementById(`tab-${t}`);
+        if (t === tabName) panel.classList.remove('hidden');
+        else panel.classList.add('hidden');
+      });
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'tab-btn py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-800 text-white shadow-sm transition';
+        } else {
+          btn.className = 'tab-btn py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition';
+        }
+      });
+    }
+
+    // --- Event Listeners ---
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    el.connectBtn.addEventListener('click', () => {
+      if (state.connected) disconnectBle();
+      else connectBle();
+    });
+
+    el.demoToggleBtn.addEventListener('click', () => {
+      if (state.connected) {
+        showToast('Disconnect BLE first to switch to Demo.', 'warn');
+        return;
+      }
+      state.demoMode = !state.demoMode;
+      if (state.demoMode && !state.rideRunning) {
+        state.rideRunning = true;
+        el.rideStartPauseBtn.textContent = 'Pause Ride';
+        el.rideStartPauseBtn.className = 'px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold transition';
+      }
+      renderConnectionState();
+      showToast(state.demoMode ? 'Demo Simulator active' : 'Demo Simulator off', 'info');
+    });
+
+    el.resDownBtn.addEventListener('click', () => sendResistanceCommand(state.resistance - 1));
+    el.resUpBtn.addEventListener('click', () => sendResistanceCommand(state.resistance + 1));
+    el.resSlider.addEventListener('input', (e) => sendResistanceCommand(Number(e.target.value)));
+
+    document.querySelectorAll('.res-preset').forEach(btn => {
+      btn.addEventListener('click', () => sendResistanceCommand(Number(btn.dataset.res)));
+    });
+
+    el.rideStartPauseBtn.addEventListener('click', () => {
+      state.rideRunning = !state.rideRunning;
+      if (state.rideRunning) {
+        el.rideStartPauseBtn.textContent = 'Pause Ride';
+        el.rideStartPauseBtn.className = 'px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold transition';
+      } else {
+        el.rideStartPauseBtn.textContent = 'Resume Ride';
+        el.rideStartPauseBtn.className = 'px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold transition';
+      }
+    });
+
+    el.rideResetBtn.addEventListener('click', () => {
+      state.rideRunning = false;
+      state.elapsedSec = 0;
+      state.watts = 0;
+      state.cadence = 0;
+      state.speedMph = 0;
+      state.distanceMi = 0;
+      state.calories = 0;
+      state.wattsSum = 0;
+      state.cadenceSum = 0;
+      state.samplesCount = 0;
+      state.samples = [];
+      stopWorkout();
+      el.rideStartPauseBtn.textContent = 'Start Ride';
+      el.rideStartPauseBtn.className = 'px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold transition';
+      renderMetrics();
+      updateChart();
+      showToast('Ride stats reset.', 'info');
+    });
+
+    el.exportCsvBtn.addEventListener('click', () => {
+      if (state.samples.length === 0) {
+        showToast('No ride data to export yet.', 'warn');
+        return;
+      }
+      const header = 'elapsed_sec,watts,cadence_rpm,speed_mph,resistance_level\n';
+      const rows = state.samples.map(s => `${s.t},${Math.round(s.watts)},${Math.round(s.cadence)},${s.speedMph},${s.resistance}`).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proform-tdf-cbc-ride-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Ride CSV downloaded.', 'success');
+    });
+
+    el.stopWorkoutBtn.addEventListener('click', stopWorkout);
+
+    el.startCustomHiitBtn.addEventListener('click', () => {
+      const rounds = Math.max(1, Math.min(20, Number(el.hiitRounds.value) || 6));
+      const workSec = Math.max(10, Math.min(300, Number(el.hiitWorkSec.value) || 30));
+      const workRes = Math.max(1, Math.min(16, Number(el.hiitWorkRes.value) || 12));
+      const restRes = Math.max(1, Math.min(16, Number(el.hiitRestRes.value) || 4));
+      const segments = [];
+      for (let i = 1; i <= rounds; i++) {
+        segments.push({ label: `Work ${i}/${rounds}`, durationSec: workSec, resistance: workRes });
+        segments.push({ label: `Rest ${i}/${rounds}`, durationSec: workSec, resistance: restRes });
+      }
+      launchWorkout({ id: 'custom_hiit', name: `Custom ${rounds}x HIIT`, segments });
+    });
+
+    el.sendRawHexBtn.addEventListener('click', async () => {
+      const bytes = hexToBytes(el.rawHexInput.value);
+      if (!bytes) {
+        showToast('Enter valid hex bytes (e.g. fe 02 0d 02).', 'warn');
+        return;
+      }
+      if (!state.connected || !state.writeChar) {
+        logBle('TX', `[OFFLINE] ${bytesToHex(bytes)}`);
+        showToast('Connect BLE to transmit raw packets.', 'warn');
+        return;
+      }
+      try {
+        await state.writeChar.writeValue(bytes);
+        logBle('TX', bytesToHex(bytes));
+      } catch (err) {
+        logBle('ERR', err.message);
+      }
+    });
+
+    el.clearLogBtn.addEventListener('click', () => {
+      el.bleLog.innerHTML = '';
+    });
+
+    el.iosGuideBtn.addEventListener('click', () => el.iosModal.classList.remove('hidden'));
+    el.closeIosModalBtn.addEventListener('click', () => el.iosModal.classList.add('hidden'));
+    el.ackIosModalBtn.addEventListener('click', () => el.iosModal.classList.add('hidden'));
+
+    // --- Init ---
+    renderWorkoutList();
+    renderMetrics();
+    renderConnectionState();
+    startLoop();
+  </script>
+</body>
+</html>
